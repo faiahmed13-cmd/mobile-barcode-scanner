@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mobile Barcode Scanner</title>
+<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f5f9;color:#172033;font-family:Arial,sans-serif}
+main{max-width:620px;margin:20px auto;padding:16px}.card{background:white;border:1px solid #e2e7ef;border-radius:16px;padding:20px}
+h1{font-size:23px;margin:0 0 8px}.muted{color:#667085;font-size:14px;line-height:1.5}
+video{width:100%;max-height:65vh;object-fit:cover;background:#111;border-radius:12px;margin-top:16px}
+button{width:100%;border:0;border-radius:10px;padding:15px;margin-top:12px;background:#2457d6;color:white;font-size:16px;font-weight:700}
+button.secondary{background:#eaf0fb;color:#1c315b}button:disabled{opacity:.5}
+#status{margin-top:14px;line-height:1.5;font-size:14px}.error{color:#c62828}.success{color:#087443}
+</style></head>
+<body><main><div class="card">
+<h1>Mobile Barcode Scanner</h1>
+<p class="muted">Tap Start Camera, allow camera access, and point the rear camera at the barcode or QR code.</p>
+<video id="video" playsinline muted autoplay></video>
+<button id="start">Start Camera</button><button id="stop" class="secondary" hidden>Stop Camera</button>
+<div id="status" role="status">Ready to scan.</div>
+</div></main>
+<script>
+(()=>{const video=document.getElementById('video'),start=document.getElementById('start'),stop=document.getElementById('stop'),status=document.getElementById('status');let reader=null,stream=null,finished=false;
+function say(t,c=''){status.className=c;status.textContent=t}
+function stopCamera(){if(reader){try{reader.reset()}catch(e){}reader=null}if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}video.srcObject=null;start.hidden=false;start.disabled=false;stop.hidden=true}
+function returnValue(value){const returnUrl=new URLSearchParams(location.search).get('return');if(!returnUrl){say('Scanned: '+value+'. No return link supplied; copy the serial number manually.','success');return}try{const target=new URL(returnUrl);target.searchParams.set('serial',value);location.href=target.toString()}catch(e){say('Return link is invalid. Scanned value: '+value,'error')}}
+start.addEventListener('click',async()=>{finished=false;start.disabled=true;say('Requesting camera permission...');if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){say('Camera requires this GitHub Pages HTTPS address opened in Chrome or Safari.','error');start.disabled=false;return}if(!window.ZXing){say('Scanner library did not load. Check internet and reload.','error');start.disabled=false;return}
+try{stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'}}});video.srcObject=stream;await video.play();reader=new ZXing.BrowserMultiFormatReader();start.hidden=true;stop.hidden=false;say('Camera is on. Hold the barcode steady.');reader.decodeFromVideoElementContinuously(video,(result)=>{if(result&&!finished){finished=true;const value=result.getText();say('Scanned successfully. Returning...','success');stopCamera();returnValue(value)}})}
+catch(e){stopCamera();let m=e.message||'Could not start camera.';if(e.name==='NotAllowedError'||e.name==='PermissionDeniedError')m='Camera permission blocked. Allow Camera for this GitHub Pages site in browser settings.';else if(e.name==='NotFoundError')m='No camera found.';else if(e.name==='NotReadableError')m='Camera is busy. Close other camera apps and try again.';say(m,'error')}});
+stop.addEventListener('click',()=>{stopCamera();say('Camera stopped.')});window.addEventListener('pagehide',stopCamera)})();
+</script></body></html>
